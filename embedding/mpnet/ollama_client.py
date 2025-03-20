@@ -1,5 +1,44 @@
-import requests
+import sys
+import os
+import time
+import psutil
 import json
+import requests
+from typing import List, Dict, Any, Optional, Union, Callable
+
+def measure_performance(func, *args, **kwargs):
+    """
+    Measure performance of a function
+    
+    Args:
+        func: Function to measure
+        *args: Arguments to pass to the function
+        **kwargs: Keyword arguments to pass to the function
+    
+    Returns:
+        Dictionary with performance metrics and function result
+    """
+    # Get initial memory usage
+    process = psutil.Process(os.getpid())
+    mem_before = process.memory_info().rss / 1024 / 1024  # MB
+    
+    # Measure time
+    start_time = time.time()
+    result = func(*args, **kwargs)
+    end_time = time.time()
+    
+    # Get final memory usage
+    mem_after = process.memory_info().rss / 1024 / 1024  # MB
+    
+    # Calculate metrics
+    metrics = {
+        "execution_time": end_time - start_time,
+        "memory_usage": mem_after - mem_before,
+        "total_memory": mem_after,
+        "result": result
+    }
+    
+    return metrics
 
 def query_ollama(prompt, model_name):
     """
@@ -16,9 +55,9 @@ def query_ollama(prompt, model_name):
     
     # Map common model shortnames to their full names in Ollama
     model_mapping = {
-        "mistral": "mistral:7b",  # Use the full model name
-        "llama2": "llama3.2",  # Keep as is
-        "ollama/llama2": "llama2"  # Handle the case with prefix
+        "mistral": "mistral:7b",
+        "llama2": "llama3.2",
+        "ollama/llama2": "llama2"
     }
     
     # Get the correct model name or use the provided one as fallback
@@ -45,23 +84,26 @@ def query_ollama(prompt, model_name):
     except Exception as e:
         return f"Error connecting to Ollama: {str(e)}"
 
-def generate_rag_response(query_text, redis_client, embedding_model, query_documents_func, llm_model, top_k=3):
+def generate_rag_response(query_text, vector_db, embedding_model, llm_model, index_name="document_index", top_k=3):
     """
     Generate a response using RAG
     
     Args:
         query_text: Query text
-        redis_client: Redis client
+        vector_db: Vector database instance
         embedding_model: Embedding model
-        query_documents_func: Function to query documents
         llm_model: Name of the LLM model to use
+        index_name: Name of the index/collection
         top_k: Number of documents to retrieve
     
     Returns:
         Generated response with metadata
     """
+    # Generate embedding for the query
+    query_vector = embedding_model.encode(query_text).tolist()
+    
     # Retrieve relevant documents
-    relevant_docs = query_documents_func(query_text, redis_client, embedding_model, top_k=top_k)
+    relevant_docs = vector_db.query(query_vector, index_name, top_k=top_k)
     
     # Prepare context
     context = "\n\n".join([doc["content"] for doc in relevant_docs])

@@ -103,7 +103,7 @@ Answer:"""
     # Generate response using Ollama
     response = ollama.chat(
         # "mistral:latest"
-        model="ollama3.2", messages=[{"role": "user", "content": prompt}]
+        model="llama3.2", messages=[{"role": "user", "content": prompt}]
     )
 
     return response["message"]["content"]

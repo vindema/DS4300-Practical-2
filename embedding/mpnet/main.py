@@ -6,9 +6,9 @@ from embedding.mpnet.ollama_client import ingest_documents, measure_performance,
 
 def main():
     # Configuration
-    db_type = "chroma"  # Options: "redis", "chroma", "faiss"
+    db_type = "faiss"  # Options: "redis", "chroma", "faiss"
     index_name = "document_index"
-    llm_model = "llama2"  # Change to modify the LLM model
+    llm_model = "mistral"  # Options: "llama2", "mistral"
     
     # Get vector database instance based on type
     db_config = {}
@@ -32,40 +32,25 @@ def main():
         ingest_documents(vector_db, model, "./data")
         
         # Query the database
-        query = "What is the difference between a list where memory is contiguously allocated and a list where linked structures are used?"
-        print(f"\nQuery: {query}")
+        while True:
+            query = input("\nEnter your search query: ")
+            if query == "exit":
+                break
         
-        # Generate query vector
-        query_vector = model.encode(query).tolist()
-        
-        # Search for similar documents
-        results = vector_db.query(query_vector, index_name)
-        
-        # Print results
-        print("\nResults:")
-        if not results:
-            print("No results found.")
-        else:
-            for i, result in enumerate(results):
-                print(f"{i+1}. {result['id']} (Score: {result['score']:.4f})")
-                print(f"   Content: {result['content'][:100]}...")
-                print(f"   Metadata: {result['metadata']}")
-                print()
-        
-        # Generate RAG response using Ollama
-        print("\nGenerating RAG response using Ollama...")
-        rag_response = generate_rag_response(
-            query,
-            vector_db,
-            model,
-            llm_model=llm_model,
-            index_name=index_name
-        )
-        
-        print("\nRAG Response:")
-        print(f"Query: {rag_response['query']}")
-        print(f"LLM Model: {rag_response['model']}")
-        print(f"Response:\n{rag_response['response']}")
+            # Generate RAG response using Ollama
+            print("\nGenerating RAG response using Ollama...")
+            rag_response = generate_rag_response(
+                query,
+                vector_db,
+                model,
+                llm_model=llm_model,
+                index_name=index_name
+            )
+            
+            print("\nRAG Response:")
+            print(f"Query: {rag_response['query']}")
+            print(f"LLM Model: {rag_response['model']}")
+            print(f"Response:\n{rag_response['response']}\n")
         
     except Exception as e:
         print(f"Error: {str(e)}")

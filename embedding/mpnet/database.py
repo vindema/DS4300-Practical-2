@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import abc
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any
 from sentence_transformers import SentenceTransformer
 
 # An abstract class representing a vector database

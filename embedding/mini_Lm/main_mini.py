@@ -6,7 +6,7 @@ from database_mini import get_vector_db, load_model
 from ollama_mini import ingest_documents, measure_performance, generate_rag_response
 
 def interactive_search(vector_db, model, llm_model, index_name):
-    print("RAG Search Interface")
+    print("🔍 RAG Search Interface")
     print("Type 'exit' to quit")
 
     while True:

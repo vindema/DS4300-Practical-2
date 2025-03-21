@@ -16,7 +16,7 @@ VECTOR_DIM = 384  # Dimension of the embeddings for all-MiniLM-L6-v2
 INDEX_NAME = "embedding_index"  # Name of the Redis index
 DOC_PREFIX = "doc:"  # Prefix for document keys in Redis
 DISTANCE_METRIC = "COSINE"  # Distance metric for vector similarity
-data_folder = "c:/Users/hifoo/OneDrive/Documents/Spring25/DS 4300/practical 2/DS4300-Practical-2/data/"  # Path to the folder containing PDFs
+data_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'data'))  # Path to the folder containing PDFs
 
 # Function to get sentence embeddings
 def get_embedding(text: str) -> list:
@@ -146,7 +146,7 @@ def process_pdfs(data_folder):
 
 # Main interactive search loop
 def interactive_search():
-    print("RAG Search Interface")
+    print("🔍 RAG Search Interface")
     print("Type 'exit' to quit")
 
     while True:

@@ -4,90 +4,48 @@ import abc
 from typing import List, Dict, Any, Optional, Union
 from sentence_transformers import SentenceTransformer
 
+# An abstract class representing a vector database
 class VectorDatabase(abc.ABC):
-    """
-    Abstract base class for vector database implementations
-    """
-    
     @abc.abstractmethod
+    # Intialize the database connection
     def setup(self, **kwargs):
-        """Initialize the database connection with optional parameters"""
         pass
     
     @abc.abstractmethod
+    # Create a new index for storing vectors
     def create_index(self, index_name: str, vector_dimensions: int, **kwargs):
-        """Create a new index or collection for storing vectors"""
         pass
     
     @abc.abstractmethod
+    # Index documents into the database
     def index_documents(self, documents: List[Dict[str, Any]], index_name: str, **kwargs) -> List[str]:
-        """
-        Index documents into the database
-        
-        Args:
-            documents: List of document dictionaries with 'content' and 'metadata' fields
-            index_name: Name of the index
-            **kwargs: Additional parameters
-            
-        Returns:
-            List of document IDs
-        """
         pass
     
     @abc.abstractmethod
+    # Query the database for similar vectors
     def query(self, query_vector: List[float], index_name: str, top_k: int = 3) -> List[Dict[str, Any]]:
-        """
-        Query the database for similar vectors
-        
-        Args:
-            query_vector: The query vector
-            index_name: Name of the index
-            top_k: Number of results to return
-            
-        Returns:
-            List of results
-        """
         pass
     
     @abc.abstractmethod
+    # Delete an index
     def delete_index(self, index_name: str):
-        """Delete an index"""
         pass
     
     @abc.abstractmethod
+    # Close the database connection
     def close(self):
-        """Close the database connection"""
         pass
 
-
+# A class representing the instance of a Redis vector database
 class RedisVectorDB(VectorDatabase):
-    """
-    Redis vector database implementation
-    """
-    
+    # Set up a Redis connection and instance
     def setup(self, host='localhost', port=6379, db=0):
-        """
-        Set up Redis client connection
-        
-        Args:
-            host (str): Redis host
-            port (int): Redis port
-            db (int): Redis database number
-        """
         from redis import Redis
         self.client = Redis(host=host, port=port, db=db)
         return self
     
+    # Create a new index in Redis
     def create_index(self, index_name: str, vector_dimensions: int, prefix="doc:", distance_metric="COSINE"):
-        """
-        Create a new index in Redis
-        
-        Args:
-            index_name: Name of the index
-            vector_dimensions: Dimensions of the vectors
-            prefix: Prefix for document keys
-            distance_metric: Distance metric for vector similarity
-        """
         from redis.commands.search.field import TextField, TagField, VectorField
         from redis.commands.search.indexDefinition import IndexDefinition
         
@@ -119,19 +77,8 @@ class RedisVectorDB(VectorDatabase):
             print(f"Error creating index: {e}")
             raise e
     
+    # Index documents in Redis
     def index_documents(self, documents: List[Dict[str, Any]], index_name: str, vector_field="embedding", model=None) -> List[str]:
-        """
-        Index documents in Redis with vector embeddings
-        
-        Args:
-            documents: List of document dictionaries with 'content' and 'metadata' fields
-            index_name: Name of the index
-            vector_field: Name of the vector field
-            model: The embedding model to use (optional if embeddings are provided)
-            
-        Returns:
-            List of document IDs
-        """
         doc_keys = []
         start_time = time.time()
         
@@ -168,18 +115,8 @@ class RedisVectorDB(VectorDatabase):
         
         return doc_keys
     
+    # Query the Redis database for similar vectors 
     def query(self, query_vector: List[float], index_name: str, top_k: int = 3) -> List[Dict[str, Any]]:
-        """
-        Query the Redis database for similar vectors
-        
-        Args:
-            query_vector: The query vector
-            index_name: Name of the index
-            top_k: Number of results to return
-            
-        Returns:
-            List of results
-        """
         # Convert embedding to a Redis vector
         redis_query = np.array(query_vector, dtype=np.float32).tobytes()
         
@@ -209,32 +146,22 @@ class RedisVectorDB(VectorDatabase):
         
         return formatted_results
     
+    # Delete an index in Redis
     def delete_index(self, index_name: str):
-        """Delete an index in Redis"""
         try:
             self.client.ft(index_name).dropindex(delete_documents=True)
             print(f"Deleted index: {index_name}")
         except Exception as e:
             print(f"Error deleting index: {e}")
     
+    # Close the Redis Connection
     def close(self):
-        """Close the Redis connection"""
         self.client.close()
 
-
+# A class representing a instance of the ChromaDB vector database
 class ChromaVectorDB(VectorDatabase):
-    """
-    Chroma vector database implementation
-    """
-    
+    # Set up the ChromaDB connection and instance
     def setup(self, persist_directory=None, **kwargs):
-        """
-        Set up Chroma client connection
-        
-        Args:
-            persist_directory: Directory to persist the database
-            **kwargs: Additional parameters for Chroma
-        """
         try:
             import chromadb
             self.client = chromadb.Client(
@@ -247,15 +174,8 @@ class ChromaVectorDB(VectorDatabase):
         except ImportError:
             raise ImportError("ChromaDB package not installed. Install with 'pip install chromadb'")
     
+    # Create a new index in ChromaDB
     def create_index(self, index_name: str, vector_dimensions: int, **kwargs):
-        """
-        Create a new collection in ChromaDB
-        
-        Args:
-            index_name: Name of the collection
-            vector_dimensions: Not used in ChromaDB but kept for API consistency
-            **kwargs: Additional parameters for collection creation
-        """
         try:
             # Check if collection exists and get or create it
             try:
@@ -273,18 +193,8 @@ class ChromaVectorDB(VectorDatabase):
             print(f"Error creating collection: {e}")
             raise e
     
+    # Index documents in ChromaDB
     def index_documents(self, documents: List[Dict[str, Any]], index_name: str, model=None) -> List[str]:
-        """
-        Index documents in ChromaDB
-        
-        Args:
-            documents: List of document dictionaries with 'content' and 'metadata' fields
-            index_name: Name of the collection (unused, uses the collection from create_index)
-            model: The embedding model to use (optional if embeddings are provided)
-            
-        Returns:
-            List of document IDs
-        """
         # Ensure collection is set
         if not hasattr(self, 'collection'):
             self.create_index(index_name, 0)
@@ -329,18 +239,8 @@ class ChromaVectorDB(VectorDatabase):
         
         return ids
     
+    # Queries the ChromaDB database for similar vectors
     def query(self, query_vector: List[float], index_name: str = None, top_k: int = 3) -> List[Dict[str, Any]]:
-        """
-        Query the ChromaDB for similar vectors
-        
-        Args:
-            query_vector: The query vector
-            index_name: Name of the collection (unused, uses the collection from create_index)
-            top_k: Number of results to return
-            
-        Returns:
-            List of results
-        """
         try:
             results = self.collection.query(
                 query_embeddings=[query_vector],
@@ -363,31 +263,22 @@ class ChromaVectorDB(VectorDatabase):
             print(f"ChromaDB query failed: {e}")
             return []
     
+    # Deletes a collection in ChromaDB
     def delete_index(self, index_name: str):
-        """Delete a collection in ChromaDB"""
         try:
             self.client.delete_collection(name=index_name)
             print(f"Deleted collection: {index_name}")
         except Exception as e:
             print(f"Error deleting collection: {e}")
     
+    # Closes the ChromaDB connection
     def close(self):
-        """Close the ChromaDB connection"""
         pass  # ChromaDB doesn't require explicit closure
 
-
+# A class representing an instance of the FAISS vector database
 class FaissVectorDB(VectorDatabase):
-    """
-    FAISS vector database implementation
-    """
-    
+    # Set ups the FAISS connection and instance
     def setup(self, **kwargs):
-        """
-        Set up FAISS
-        
-        Args:
-            **kwargs: Additional parameters for FAISS
-        """
         try:
             import faiss
             self.faiss = faiss
@@ -396,15 +287,8 @@ class FaissVectorDB(VectorDatabase):
         except ImportError:
             raise ImportError("FAISS package not installed. Install with 'pip install faiss-cpu' or 'pip install faiss-gpu'")
     
+    # Creates a new FAISS index
     def create_index(self, index_name: str, vector_dimensions: int, index_type="L2"):
-        """
-        Create a new FAISS index
-        
-        Args:
-            index_name: Name of the index
-            vector_dimensions: Dimensions of the vectors
-            index_type: Type of FAISS index (L2, IP, etc.)
-        """
         try:
             if index_type == "L2":
                 index = self.faiss.IndexFlatL2(vector_dimensions)
@@ -421,18 +305,9 @@ class FaissVectorDB(VectorDatabase):
             print(f"Error creating FAISS index: {e}")
             raise e
     
+    # Index the documents in FAISS
     def index_documents(self, documents: List[Dict[str, Any]], index_name: str, model=None) -> List[str]:
-        """
-        Index documents in FAISS
-        
-        Args:
-            documents: List of document dictionaries with 'content' and 'metadata' fields
-            index_name: Name of the index
-            model: The embedding model to use (optional if embeddings are provided)
-            
-        Returns:
-            List of document IDs
-        """
+
         if index_name not in self.indexes:
             raise ValueError(f"Index {index_name} does not exist")
         
@@ -478,18 +353,9 @@ class FaissVectorDB(VectorDatabase):
         
         return doc_ids
     
+    # Query the FAISS index
     def query(self, query_vector: List[float], index_name: str, top_k: int = 3) -> List[Dict[str, Any]]:
-        """
-        Query the FAISS index for similar vectors
-        
-        Args:
-            query_vector: The query vector
-            index_name: Name of the index
-            top_k: Number of results to return
-            
-        Returns:
-            List of results
-        """
+
         if index_name not in self.indexes:
             raise ValueError(f"Index {index_name} does not exist")
         
@@ -519,32 +385,22 @@ class FaissVectorDB(VectorDatabase):
             print(f"FAISS query failed: {e}")
             return []
     
+    # Delete the FAISS index
     def delete_index(self, index_name: str):
-        """Delete a FAISS index"""
         if index_name in self.indexes:
             del self.indexes[index_name]
             if index_name in self.document_store:
                 del self.document_store[index_name]
             print(f"Deleted FAISS index: {index_name}")
     
+    # Close the FAISS connection
     def close(self):
-        """Close FAISS connection"""
         self.indexes = {}
         self.document_store = {}
 
 
-# Factory for creating vector databases
+# Creates and retrieves the vector databases
 def get_vector_db(db_type: str, **kwargs) -> VectorDatabase:
-    """
-    Factory function to create a vector database instance
-    
-    Args:
-        db_type: Type of vector database ('redis', 'chroma', 'faiss')
-        **kwargs: Additional parameters for the database
-        
-    Returns:
-        VectorDatabase instance
-    """
     if db_type.lower() == 'redis':
         return RedisVectorDB().setup(**kwargs)
     elif db_type.lower() == 'chroma':
@@ -555,17 +411,8 @@ def get_vector_db(db_type: str, **kwargs) -> VectorDatabase:
         raise ValueError(f"Unsupported vector database type: {db_type}")
 
 
-# Helper functions
+# Loads the MPnet embedding model
 def load_model(model_name="all-mpnet-base-v2"):
-    """
-    Load the SentenceTransformers model
-    
-    Args:
-        model_name (str): Name of the model to load
-        
-    Returns:
-        SentenceTransformer model
-    """
     start_time = time.time()
     model = SentenceTransformer(model_name)
     duration = time.time() - start_time

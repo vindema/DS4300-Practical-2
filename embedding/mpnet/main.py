@@ -1,32 +1,14 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
-
-# Import the vector database abstraction
 from embedding.mpnet.database import get_vector_db, load_model
-from embedding.mpnet.ollama_client import measure_performance, generate_rag_response
+from embedding.mpnet.ollama_client import ingest_documents, measure_performance, generate_rag_response
 
 def main():
-    # Sample documents
-    sample_documents = [
-        {
-            "content": "Redis is an open source, in-memory data structure store, used as a database, cache, and message broker. Redis provides data structures such as strings, hashes, lists, sets, sorted sets with range queries, bitmaps, hyperloglogs, geospatial indexes, and streams.",
-            "metadata": "source: redis_documentation.txt"
-        },
-        {
-            "content": "Vector databases are specialized database systems designed to store and query vector embeddings efficiently. They are optimized for similarity search operations such as k-nearest neighbors (KNN) and are commonly used in machine learning applications.",
-            "metadata": "source: vector_databases.txt"
-        },
-        {
-            "content": "MPNet is a pre-trained language model that combines the advantages of both BERT and XLNet. It uses a permuted language modeling objective and incorporates position information, making it effective for various NLP tasks including text classification, question answering, and sequence labeling.",
-            "metadata": "source: mpnet_documentation.txt"
-        }
-    ]
-    
     # Configuration
-    db_type = "faiss"  # Options: "redis", "chroma", "faiss"
+    db_type = "chroma"  # Options: "redis", "chroma", "faiss"
     index_name = "document_index"
-    llm_model = "mistral"  # Change to modify the LLM model
+    llm_model = "llama2"  # Change to modify the LLM model
     
     # Get vector database instance based on type
     db_config = {}
@@ -46,16 +28,11 @@ def main():
         # Create index/collection
         vector_dimensions = 768  # MPNet embedding dimension
         vector_db.create_index(index_name, vector_dimensions)
-        
-        # Index documents
-        doc_keys = vector_db.index_documents(sample_documents, index_name, model=model)
-        
-        if not doc_keys:
-            print("Failed to index documents. Exiting.")
-            return
+
+        ingest_documents(vector_db, model, "./data")
         
         # Query the database
-        query = "How does Redis support vector search?"
+        query = "What is the difference between a list where memory is contiguously allocated and a list where linked structures are used?"
         print(f"\nQuery: {query}")
         
         # Generate query vector

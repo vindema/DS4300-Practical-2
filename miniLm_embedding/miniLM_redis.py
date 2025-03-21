@@ -146,7 +146,7 @@ def process_pdfs(data_folder):
 
 # Main interactive search loop
 def interactive_search():
-    print("🔍 RAG Search Interface")
+    print("RAG Search Interface")
     print("Type 'exit' to quit")
 
     while True:

@@ -1,5 +1,6 @@
 import sys
 import os
+import subprocess
 import numpy as np
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from database_mini import get_vector_db, load_model
@@ -50,8 +51,10 @@ def interactive_search(vector_db, model, llm_model, index_name):
         print(f"Response:\n{rag_response['response']}")
 
 def main():
+    # Prompt user for db_type
+    db_type = input("Enter the database type (redis, chroma, faiss): ").strip().lower()
+    
     # Configuration
-    db_type = "redis"  # Options: "redis", "chroma", "faiss"
     index_name = "document_index"
     llm_model = "llama2"  # Change to modify the LLM model
     
@@ -63,28 +66,33 @@ def main():
         db_config = {"persist_directory": "./chroma_db"}
     
     try:
-        # Initialize vector database
-        vector_db = get_vector_db(db_type, **db_config)
-        print(f"Successfully initialized {db_type} vector database")
-        
-        # Load embedding model
-        model = load_model()
-        
-        # Create index/collection
-        vector_dimensions = 384  # miniLM embedding dimension
-        vector_db.create_index(index_name, vector_dimensions)
+        if db_type == "redis":
+            # Run the miniLM_redis.py script
+            script_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'miniLM_redis.py'))
+            subprocess.run(['python', script_path], check=True)
+        else:
+            # Initialize vector database
+            vector_db = get_vector_db(db_type, **db_config)
+            print(f"Successfully initialized {db_type} vector database")
+            
+            # Load embedding model
+            model = load_model()
+            
+            # Create index/collection
+            vector_dimensions = 384  # miniLM embedding dimension
+            vector_db.create_index(index_name, vector_dimensions)
 
-        # Ingest documents
-        ingest_documents(vector_db, model, "./data")
-        
-        # Start interactive search loop
-        interactive_search(vector_db, model, llm_model, index_name)
+            # Ingest documents
+            ingest_documents(vector_db, model, "./data")
+            
+            # Start interactive search loop
+            interactive_search(vector_db, model, llm_model, index_name)
         
     except Exception as e:
         print(f"Error: {str(e)}")
     finally:
         # Clean up
-        if 'vector_db' in locals():
+        if 'vector_db' in locals() and vector_db is not None:
             vector_db.close()
 
 

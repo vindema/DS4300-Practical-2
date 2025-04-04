@@ -1,7 +1,7 @@
 # DS4300-Practical-2
 
-1. To choose embedding model to embedding
-2. To run class_rag run ingest.py, then search.py
+1. To run class_rag click embedding > class_rag
+     - run ingest.py, then search.py
 3. To run miniLm click embedding > mini_LM > main_miniLM.py
      - From there you can run Redis, Faiss, and ChromaDB
 4. To run mpnet click embedding > mpnet > main.py
